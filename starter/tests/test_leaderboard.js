@@ -26,8 +26,8 @@ function createLeaderboard(initialValue = null) {
   return {leaderboard: context.window.SudokuLeaderboard, values};
 }
 
-function score(name, timeMs, completedAt, difficulty = 'medium') {
-  return {name, timeMs, completedAt, difficulty};
+function score(name, timeMs, completedAt, difficulty = 'medium', hintCount = 0) {
+  return {name, timeMs, completedAt, difficulty, hintCount};
 }
 
 test('missing and malformed storage produce an empty leaderboard', () => {
@@ -45,7 +45,7 @@ test('outdated versions and invalid score records are ignored', () => {
   });
   assert.equal(
     JSON.stringify(createLeaderboard(malformed).leaderboard.loadScores()),
-    JSON.stringify([{name: 'Valid', timeMs: 1000, difficulty: 'medium', completedAt: 1}])
+    JSON.stringify([{name: 'Valid', timeMs: 1000, hintCount: 0, difficulty: 'medium', completedAt: 1}])
   );
 });
 
@@ -90,6 +90,20 @@ test('blank and invalid names are safely replaced before storage', () => {
 
   assert.equal(blankName[0].name, 'Anonymous');
   assert.equal(invalidName[0].name, 'Anonymous');
+});
+
+test('hint counts are preserved and old records default to zero', () => {
+  const {leaderboard} = createLeaderboard();
+  const recorded = leaderboard.recordScore(score('Hint user', 1000, 1, 'easy', 3));
+  assert.equal(recorded[0].hintCount, 3);
+
+  const legacy = createLeaderboard(JSON.stringify({
+    version: 1,
+    scores: [{name: 'Legacy', timeMs: 1000, completedAt: 1, difficulty: 'medium'}]
+  })).leaderboard.loadScores();
+  assert.equal(legacy[0].hintCount, 0);
+
+  assert.equal(leaderboard.recordScore(score('Bad count', 2000, 2, 'medium', -1)).length, 1);
 });
 
 test('elapsed time formatting is stable at minute boundaries', () => {

@@ -42,5 +42,32 @@ def check_solution():
                 incorrect.append([i, j])
     return jsonify({'incorrect': incorrect})
 
+@app.route('/hint', methods=['POST'])
+def get_hint():
+    solution = CURRENT.get('solution')
+    if solution is None:
+        return jsonify({'error': 'No game in progress'}), 400
+
+    data = request.get_json(silent=True)
+    board = data.get('board') if isinstance(data, dict) else None
+    if (
+        not isinstance(board, list)
+        or len(board) != sudoku_logic.SIZE
+        or any(not isinstance(row, list) or len(row) != sudoku_logic.SIZE for row in board)
+        or any(
+            type(value) is not int or value < sudoku_logic.EMPTY or value > sudoku_logic.SIZE
+            for row in board
+            for value in row
+        )
+    ):
+        return jsonify({'error': 'Invalid board'}), 400
+
+    for row in range(sudoku_logic.SIZE):
+        for col in range(sudoku_logic.SIZE):
+            if board[row][col] == sudoku_logic.EMPTY:
+                return jsonify({'row': row, 'col': col, 'value': solution[row][col]})
+
+    return jsonify({'error': 'No empty cells available'}), 400
+
 if __name__ == '__main__':
     app.run(debug=True)

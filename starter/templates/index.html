@@ -10,6 +10,8 @@
   <div class="game-status">
     <span>Time</span>
     <time id="game-timer" aria-live="off">00:00</time>
+    <span>Hints</span>
+    <span id="hint-count" aria-live="polite">0</span>
   </div>
   <div id="sudoku-board"></div>
   <div class="controls">
@@ -20,6 +22,7 @@
       <option value="hard">Hard</option>
     </select>
     <button id="new-game">New Game</button>
+    <button id="use-hint">Hint</button>
     <button id="check-solution">Check Solution</button>
     <label for="player-name">Name</label>
     <input id="player-name" type="text" maxlength="40" autocomplete="nickname">
@@ -29,7 +32,7 @@
     <h2 id="leaderboard-title">Top 10</h2>
     <table>
       <thead>
-        <tr><th scope="col">Rank</th><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Difficulty</th></tr>
+        <tr><th scope="col">Rank</th><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Hints</th><th scope="col">Difficulty</th></tr>
       </thead>
       <tbody id="leaderboard-entries"></tbody>
     </table>

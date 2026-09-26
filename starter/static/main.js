@@ -5,6 +5,20 @@ let currentDifficulty = 'medium';
 let timerStartedAt = null;
 let timerInterval = null;
 let gameCompleted = false;
+let hintCount = 0;
+
+function getCurrentBoard() {
+  const inputs = document.getElementById('sudoku-board').getElementsByTagName('input');
+  const board = [];
+  for (let row = 0; row < SIZE; row++) {
+    board[row] = [];
+    for (let col = 0; col < SIZE; col++) {
+      const value = inputs[row * SIZE + col].value;
+      board[row][col] = value ? parseInt(value, 10) : 0;
+    }
+  }
+  return board;
+}
 
 function updateTimer() {
   if (timerStartedAt === null) return;
@@ -42,6 +56,7 @@ function renderLeaderboard() {
       String(index + 1),
       score.name,
       window.SudokuLeaderboard.formatTime(score.timeMs),
+      String(score.hintCount),
       score.difficulty[0].toUpperCase() + score.difficulty.slice(1)
     ];
     values.forEach((value) => {
@@ -104,22 +119,51 @@ async function newGame() {
   const data = await res.json();
   renderPuzzle(data.puzzle);
   currentDifficulty = difficulty;
+  hintCount = 0;
+  document.getElementById('hint-count').textContent = String(hintCount);
+  document.getElementById('use-hint').disabled = false;
   startTimer();
   document.getElementById('message').innerText = '';
 }
 
-async function checkSolution() {
-  const boardDiv = document.getElementById('sudoku-board');
-  const inputs = boardDiv.getElementsByTagName('input');
-  const board = [];
-  for (let i = 0; i < SIZE; i++) {
-    board[i] = [];
-    for (let j = 0; j < SIZE; j++) {
-      const idx = i * SIZE + j;
-      const val = inputs[idx].value;
-      board[i][j] = val ? parseInt(val, 10) : 0;
+async function useHint() {
+  const hintButton = document.getElementById('use-hint');
+  hintButton.disabled = true;
+  const msg = document.getElementById('message');
+  try {
+    const res = await fetch('/hint', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({board: getCurrentBoard()})
+    });
+    const data = await res.json();
+    if (data.error) {
+      msg.style.color = '#d32f2f';
+      msg.innerText = data.error;
+      return;
     }
+
+    const input = document.querySelector(
+      `.sudoku-cell[data-row="${data.row}"][data-col="${data.col}"]`
+    );
+    input.value = data.value;
+    input.disabled = true;
+    input.className = 'sudoku-cell hinted';
+    puzzle[data.row][data.col] = data.value;
+    hintCount++;
+    document.getElementById('hint-count').textContent = String(hintCount);
+    msg.innerText = '';
+  } catch (error) {
+    msg.style.color = '#d32f2f';
+    msg.innerText = 'Unable to get a hint.';
+  } finally {
+    hintButton.disabled = gameCompleted;
   }
+}
+
+async function checkSolution() {
+  const inputs = document.getElementById('sudoku-board').getElementsByTagName('input');
+  const board = getCurrentBoard();
   const res = await fetch('/check', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -150,9 +194,11 @@ async function checkSolution() {
       window.SudokuLeaderboard.recordScore({
         name: document.getElementById('player-name').value,
         timeMs,
+        hintCount,
         difficulty: currentDifficulty,
         completedAt: Date.now()
       });
+      document.getElementById('use-hint').disabled = true;
       renderLeaderboard();
     }
   } else {
@@ -165,6 +211,7 @@ async function checkSolution() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
+  document.getElementById('use-hint').addEventListener('click', useHint);
   renderLeaderboard();
   // initialize
   newGame();

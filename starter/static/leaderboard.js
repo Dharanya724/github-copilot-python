@@ -15,10 +15,13 @@ function normalizeScore(score) {
   if (!Number.isFinite(score.timeMs) || score.timeMs < 0) return null;
   if (!Number.isFinite(score.completedAt) || score.completedAt < 0) return null;
   if (!VALID_DIFFICULTIES.has(score.difficulty)) return null;
+  const hintCount = score.hintCount === undefined ? 0 : score.hintCount;
+  if (!Number.isSafeInteger(hintCount) || hintCount < 0) return null;
 
   return {
     name: sanitizePlayerName(score.name),
     timeMs: score.timeMs,
+    hintCount,
     difficulty: score.difficulty,
     completedAt: score.completedAt
   };

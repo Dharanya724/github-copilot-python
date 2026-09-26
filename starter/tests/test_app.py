@@ -24,6 +24,7 @@ def test_new_game_route_returns_puzzle(client):
     assert response.status_code == 200
     data = response.get_json()
     assert "puzzle" in data
+    assert "solution" not in data
 
     puzzle = data["puzzle"]
     assert len(puzzle) == sudoku_logic.SIZE
@@ -82,3 +83,29 @@ def test_check_route_without_game_returns_error(client):
 
     assert response.status_code == 400
     assert response.get_json() == {"error": "No game in progress"}
+
+
+def test_hint_route_returns_one_correct_value_for_an_empty_cell(client):
+    puzzle = client.get("/new?clues=35").get_json()["puzzle"]
+    board = [row[:] for row in puzzle]
+    empty_before = sum(cell == sudoku_logic.EMPTY for row in board for cell in row)
+
+    response = client.post("/hint", json={"board": board})
+
+    assert response.status_code == 200
+    hint = response.get_json()
+    row, col = hint["row"], hint["col"]
+    assert board[row][col] == sudoku_logic.EMPTY
+    assert hint["value"] == CURRENT["solution"][row][col]
+    board[row][col] = hint["value"]
+    assert sum(cell == sudoku_logic.EMPTY for line in board for cell in line) == empty_before - 1
+
+
+def test_hint_route_rejects_a_board_without_empty_cells(client):
+    client.get("/new?clues=35")
+    complete_board = [row[:] for row in CURRENT["solution"]]
+
+    response = client.post("/hint", json={"board": complete_board})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "No empty cells available"}

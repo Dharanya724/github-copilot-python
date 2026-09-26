@@ -51,6 +51,11 @@ h1 {
     color: #333;
 }
 
+.sudoku-cell.hinted {
+    font-weight: bold;
+    color: #1565c0;
+}
+
 .sudoku-cell.incorrect {
     background: #ffcdd2;
 }
