@@ -113,10 +113,38 @@ function createBoardElement() {
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = val;
+        validateCell(e.target);
       });
       rowDiv.appendChild(input);
     }
     boardDiv.appendChild(rowDiv);
+  }
+}
+
+async function validateCell(input) {
+  if (input.disabled) return;
+  if (!input.value) {
+    input.classList.remove('incorrect');
+    return;
+  }
+
+  const value = input.value;
+  try {
+    const res = await fetch('/validate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        row: Number(input.dataset.row),
+        col: Number(input.dataset.col),
+        value: Number(value)
+      })
+    });
+    const data = await res.json();
+    if (res.ok && input.isConnected && !input.disabled && input.value === value) {
+      input.classList.toggle('incorrect', !data.correct);
+    }
+  } catch (error) {
+    // Leave the current styling unchanged if server validation is unavailable.
   }
 }
 

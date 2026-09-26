@@ -78,6 +78,56 @@ def test_check_route_marks_correct_and_incorrect_boards(client):
     assert [0, 0] in wrong_data["incorrect"]
 
 
+def test_validate_route_checks_one_editable_cell(client):
+    client.get("/new?clues=35")
+    row, col = next(
+        (row, col)
+        for row in range(sudoku_logic.SIZE)
+        for col in range(sudoku_logic.SIZE)
+        if CURRENT["puzzle"][row][col] == sudoku_logic.EMPTY
+    )
+    correct_value = CURRENT["solution"][row][col]
+    incorrect_value = correct_value % sudoku_logic.SIZE + 1
+
+    correct_response = client.post(
+        "/validate", json={"row": row, "col": col, "value": correct_value}
+    )
+    incorrect_response = client.post(
+        "/validate", json={"row": row, "col": col, "value": incorrect_value}
+    )
+    empty_response = client.post(
+        "/validate", json={"row": row, "col": col, "value": sudoku_logic.EMPTY}
+    )
+
+    assert correct_response.get_json() == {"correct": True}
+    assert incorrect_response.get_json() == {"correct": False}
+    assert empty_response.get_json() == {"correct": False}
+
+
+def test_validate_route_rejects_locked_cells(client):
+    puzzle = client.get("/new?clues=35").get_json()["puzzle"]
+    prefilled_row, prefilled_col = next(
+        (row, col)
+        for row in range(sudoku_logic.SIZE)
+        for col in range(sudoku_logic.SIZE)
+        if puzzle[row][col] != sudoku_logic.EMPTY
+    )
+    prefilled_response = client.post(
+        "/validate",
+        json={"row": prefilled_row, "col": prefilled_col, "value": puzzle[prefilled_row][prefilled_col]},
+    )
+
+    client.post("/hint", json={"board": puzzle})
+    hinted_row, hinted_col = next(iter(CURRENT["hinted"]))
+    hinted_response = client.post(
+        "/validate",
+        json={"row": hinted_row, "col": hinted_col, "value": CURRENT["solution"][hinted_row][hinted_col]},
+    )
+
+    assert prefilled_response.status_code == 400
+    assert hinted_response.status_code == 400
+
+
 def test_check_route_without_game_returns_error(client):
     CURRENT["solution"] = None
 

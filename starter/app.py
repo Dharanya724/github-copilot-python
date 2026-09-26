@@ -6,7 +6,8 @@ app = Flask(__name__)
 # Keep a simple in-memory store for current puzzle and solution
 CURRENT = {
     'puzzle': None,
-    'solution': None
+    'solution': None,
+    'hinted': set()
 }
 
 @app.route('/')
@@ -26,7 +27,36 @@ def new_game():
     puzzle, solution = sudoku_logic.generate_puzzle(clues)
     CURRENT['puzzle'] = puzzle
     CURRENT['solution'] = solution
+    CURRENT['hinted'] = set()
     return jsonify({'puzzle': puzzle})
+
+@app.route('/validate', methods=['POST'])
+def validate_cell():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid cell'}), 400
+
+    row = data.get('row')
+    col = data.get('col')
+    value = data.get('value')
+    if (
+        type(row) is not int
+        or type(col) is not int
+        or not 0 <= row < sudoku_logic.SIZE
+        or not 0 <= col < sudoku_logic.SIZE
+        or type(value) is not int
+        or not sudoku_logic.EMPTY <= value <= sudoku_logic.SIZE
+    ):
+        return jsonify({'error': 'Invalid cell'}), 400
+
+    solution = CURRENT.get('solution')
+    puzzle = CURRENT.get('puzzle')
+    if solution is None or puzzle is None:
+        return jsonify({'error': 'No game in progress'}), 400
+    if puzzle[row][col] != sudoku_logic.EMPTY or (row, col) in CURRENT['hinted']:
+        return jsonify({'error': 'Cell is locked'}), 400
+
+    return jsonify({'correct': value == solution[row][col]})
 
 @app.route('/check', methods=['POST'])
 def check_solution():
@@ -65,6 +95,7 @@ def get_hint():
     for row in range(sudoku_logic.SIZE):
         for col in range(sudoku_logic.SIZE):
             if board[row][col] == sudoku_logic.EMPTY:
+                CURRENT['hinted'].add((row, col))
                 return jsonify({'row': row, 'col': col, 'value': solution[row][col]})
 
     return jsonify({'error': 'No empty cells available'}), 400
