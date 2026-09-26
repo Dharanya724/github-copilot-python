@@ -15,7 +15,14 @@ def index():
 
 @app.route('/new')
 def new_game():
-    clues = int(request.args.get('clues', 35))
+    difficulty = request.args.get('difficulty')
+    if difficulty is not None:
+        difficulty = difficulty.lower()
+        if difficulty not in sudoku_logic.DIFFICULTY_CLUES:
+            return jsonify({'error': 'Invalid difficulty'}), 400
+        clues = sudoku_logic.DIFFICULTY_CLUES[difficulty]
+    else:
+        clues = int(request.args.get('clues', 35))
     puzzle, solution = sudoku_logic.generate_puzzle(clues)
     CURRENT['puzzle'] = puzzle
     CURRENT['solution'] = solution

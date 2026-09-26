@@ -74,6 +74,12 @@ button {
     transition: background 0.2s;
 }
 
+select {
+    padding: 8px;
+    margin: 0 8px;
+    font-size: 16px;
+}
+
 button:hover {
     background: #1565c0;
 }

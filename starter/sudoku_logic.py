@@ -3,6 +3,11 @@ import random
 
 SIZE = 9
 EMPTY = 0
+DIFFICULTY_CLUES = {
+    'easy': 40,
+    'medium': 35,
+    'hard': 30,
+}
 
 
 def deep_copy(board):
@@ -135,7 +140,7 @@ def generate_puzzle(clues=35):
                 continue
             filled_count -= 1
 
-        if count_solutions(puzzle) == 1:
+        if filled_count == target_clues and count_solutions(puzzle) == 1:
             return puzzle, solution
 
-    raise ValueError(f"Unable to generate a unique Sudoku puzzle with {target_clues} clues")
+    raise ValueError(f"Unable to generate a unique Sudoku puzzle with exactly {target_clues} clues")

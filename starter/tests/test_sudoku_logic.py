@@ -1,5 +1,7 @@
 import random
 
+import pytest
+
 import sudoku_logic
 
 
@@ -72,6 +74,31 @@ def test_generate_puzzle_returns_valid_board_and_unique_solution():
     assert all(len(row) == sudoku_logic.SIZE for row in puzzle)
     assert all(len(row) == sudoku_logic.SIZE for row in solution)
     assert any(cell == sudoku_logic.EMPTY for row in puzzle for cell in row)
+    assert sum(cell != sudoku_logic.EMPTY for row in puzzle for cell in row) == 35
     assert all(cell in range(1, sudoku_logic.SIZE + 1) for row in solution for cell in row)
     assert sudoku_logic.count_solutions(puzzle) == 1
     assert sudoku_logic.count_solutions(solution) == 1
+
+
+@pytest.mark.parametrize(
+    ("difficulty", "expected_clues"),
+    [("easy", 40), ("medium", 35), ("hard", 30)],
+)
+def test_generate_puzzle_for_each_difficulty_has_exact_clues_and_one_solution(
+    difficulty, expected_clues
+):
+    random.seed(0)
+    puzzle, solution = sudoku_logic.generate_puzzle(
+        sudoku_logic.DIFFICULTY_CLUES[difficulty]
+    )
+
+    filled_cells = sum(
+        cell != sudoku_logic.EMPTY for row in puzzle for cell in row
+    )
+    assert filled_cells == expected_clues
+    assert sudoku_logic.count_solutions(puzzle) == 1
+    assert all(
+        not puzzle[row][col] or puzzle[row][col] == solution[row][col]
+        for row in range(sudoku_logic.SIZE)
+        for col in range(sudoku_logic.SIZE)
+    )

@@ -29,8 +29,34 @@ def test_new_game_route_returns_puzzle(client):
     assert len(puzzle) == sudoku_logic.SIZE
     assert all(len(row) == sudoku_logic.SIZE for row in puzzle)
     assert any(cell == sudoku_logic.EMPTY for row in puzzle for cell in row)
+    assert sum(cell != sudoku_logic.EMPTY for row in puzzle for cell in row) == 35
     assert CURRENT["puzzle"] == puzzle
     assert CURRENT["solution"] is not None
+
+
+@pytest.mark.parametrize(
+    ("difficulty", "expected_clues"),
+    [("easy", 40), ("medium", 35), ("hard", 30)],
+)
+def test_new_game_route_generates_unique_puzzle_for_each_difficulty(
+    client, difficulty, expected_clues
+):
+    response = client.get(f"/new?difficulty={difficulty}")
+
+    assert response.status_code == 200
+    puzzle = response.get_json()["puzzle"]
+    filled_cells = sum(
+        cell != sudoku_logic.EMPTY for row in puzzle for cell in row
+    )
+    assert filled_cells == expected_clues
+    assert sudoku_logic.count_solutions(puzzle) == 1
+
+
+def test_new_game_route_rejects_unknown_difficulty(client):
+    response = client.get("/new?difficulty=expert")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid difficulty"}
 
 
 def test_check_route_marks_correct_and_incorrect_boards(client):
