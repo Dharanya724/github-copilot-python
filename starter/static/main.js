@@ -1,6 +1,57 @@
 // Client-side rendering and interaction for the Flask-backed Sudoku
 const SIZE = 9;
 let puzzle = [];
+let currentDifficulty = 'medium';
+let timerStartedAt = null;
+let timerInterval = null;
+let gameCompleted = false;
+
+function updateTimer() {
+  if (timerStartedAt === null) return;
+  const elapsedMs = performance.now() - timerStartedAt;
+  document.getElementById('game-timer').textContent =
+    window.SudokuLeaderboard.formatTime(elapsedMs);
+}
+
+function startTimer() {
+  if (timerInterval !== null) clearInterval(timerInterval);
+  timerStartedAt = performance.now();
+  timerInterval = setInterval(updateTimer, 250);
+  gameCompleted = false;
+  document.getElementById('game-timer').textContent = '00:00';
+}
+
+function stopTimer() {
+  if (timerStartedAt === null) return 0;
+  const elapsedMs = Math.max(0, performance.now() - timerStartedAt);
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerStartedAt = null;
+  document.getElementById('game-timer').textContent =
+    window.SudokuLeaderboard.formatTime(elapsedMs);
+  return elapsedMs;
+}
+
+function renderLeaderboard() {
+  const entries = document.getElementById('leaderboard-entries');
+  entries.replaceChildren();
+  const scores = window.SudokuLeaderboard.loadScores();
+  scores.forEach((score, index) => {
+    const row = document.createElement('tr');
+    const values = [
+      String(index + 1),
+      score.name,
+      window.SudokuLeaderboard.formatTime(score.timeMs),
+      score.difficulty[0].toUpperCase() + score.difficulty.slice(1)
+    ];
+    values.forEach((value) => {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+    entries.appendChild(row);
+  });
+}
 
 function createBoardElement() {
   const boardDiv = document.getElementById('sudoku-board');
@@ -52,6 +103,8 @@ async function newGame() {
   const res = await fetch(`/new?difficulty=${encodeURIComponent(difficulty)}`);
   const data = await res.json();
   renderPuzzle(data.puzzle);
+  currentDifficulty = difficulty;
+  startTimer();
   document.getElementById('message').innerText = '';
 }
 
@@ -91,6 +144,17 @@ async function checkSolution() {
   if (incorrect.size === 0) {
     msg.style.color = '#388e3c';
     msg.innerText = 'Congratulations! You solved it!';
+    if (!gameCompleted) {
+      const timeMs = stopTimer();
+      gameCompleted = true;
+      window.SudokuLeaderboard.recordScore({
+        name: document.getElementById('player-name').value,
+        timeMs,
+        difficulty: currentDifficulty,
+        completedAt: Date.now()
+      });
+      renderLeaderboard();
+    }
   } else {
     msg.style.color = '#d32f2f';
     msg.innerText = 'Some cells are incorrect.';
@@ -101,6 +165,7 @@ async function checkSolution() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
+  renderLeaderboard();
   // initialize
   newGame();
 });

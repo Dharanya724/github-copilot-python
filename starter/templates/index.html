@@ -7,6 +7,10 @@
 </head>
 <body>
   <h1>Sudoku Game</h1>
+  <div class="game-status">
+    <span>Time</span>
+    <time id="game-timer" aria-live="off">00:00</time>
+  </div>
   <div id="sudoku-board"></div>
   <div class="controls">
     <label for="difficulty">Difficulty</label>
@@ -17,8 +21,20 @@
     </select>
     <button id="new-game">New Game</button>
     <button id="check-solution">Check Solution</button>
+    <label for="player-name">Name</label>
+    <input id="player-name" type="text" maxlength="40" autocomplete="nickname">
     <span id="message"></span>
   </div>
+  <section id="leaderboard" aria-labelledby="leaderboard-title">
+    <h2 id="leaderboard-title">Top 10</h2>
+    <table>
+      <thead>
+        <tr><th scope="col">Rank</th><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Difficulty</th></tr>
+      </thead>
+      <tbody id="leaderboard-entries"></tbody>
+    </table>
+  </section>
+  <script src="/static/leaderboard.js"></script>
   <script src="/static/main.js"></script>
 </body>
 </html>
