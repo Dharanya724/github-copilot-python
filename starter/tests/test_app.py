@@ -16,6 +16,8 @@ def test_index_route_renders_main_page(client):
 
     assert response.status_code == 200
     assert b"Sudoku Game" in response.data
+    assert b'id="theme-toggle"' in response.data
+    assert b'aria-pressed="false">Dark mode: Off</button>' in response.data
 
 
 def test_new_game_route_returns_puzzle(client):

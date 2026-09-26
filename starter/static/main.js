@@ -1,11 +1,40 @@
 // Client-side rendering and interaction for the Flask-backed Sudoku
 const SIZE = 9;
+const THEME_STORAGE_KEY = 'sudoku.theme.v1';
 let puzzle = [];
 let currentDifficulty = 'medium';
 let timerStartedAt = null;
 let timerInterval = null;
 let gameCompleted = false;
 let hintCount = 0;
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const toggle = document.getElementById('theme-toggle');
+  toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+  toggle.textContent = `Dark mode: ${theme === 'dark' ? 'On' : 'Off'}`;
+}
+
+function initializeTheme() {
+  let theme = 'light';
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === 'dark' || storedTheme === 'light') theme = storedTheme;
+  } catch (error) {
+    // Keep the game usable when browser storage is unavailable.
+  }
+
+  setTheme(theme);
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(theme);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (error) {
+      // The theme still applies for this page even if it cannot be persisted.
+    }
+  });
+}
 
 function getCurrentBoard() {
   const inputs = document.getElementById('sudoku-board').getElementsByTagName('input');
@@ -138,7 +167,7 @@ async function useHint() {
     });
     const data = await res.json();
     if (data.error) {
-      msg.style.color = '#d32f2f';
+      msg.style.color = 'var(--message-error)';
       msg.innerText = data.error;
       return;
     }
@@ -154,7 +183,7 @@ async function useHint() {
     document.getElementById('hint-count').textContent = String(hintCount);
     msg.innerText = '';
   } catch (error) {
-    msg.style.color = '#d32f2f';
+    msg.style.color = 'var(--message-error)';
     msg.innerText = 'Unable to get a hint.';
   } finally {
     hintButton.disabled = gameCompleted;
@@ -172,7 +201,7 @@ async function checkSolution() {
   const data = await res.json();
   const msg = document.getElementById('message');
   if (data.error) {
-    msg.style.color = '#d32f2f';
+    msg.style.color = 'var(--message-error)';
     msg.innerText = data.error;
     return;
   }
@@ -186,7 +215,7 @@ async function checkSolution() {
     }
   }
   if (incorrect.size === 0) {
-    msg.style.color = '#388e3c';
+    msg.style.color = 'var(--message-success)';
     msg.innerText = 'Congratulations! You solved it!';
     if (!gameCompleted) {
       const timeMs = stopTimer();
@@ -202,7 +231,7 @@ async function checkSolution() {
       renderLeaderboard();
     }
   } else {
-    msg.style.color = '#d32f2f';
+    msg.style.color = 'var(--message-error)';
     msg.innerText = 'Some cells are incorrect.';
   }
 }
@@ -212,6 +241,7 @@ window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
   document.getElementById('use-hint').addEventListener('click', useHint);
+  initializeTheme();
   renderLeaderboard();
   // initialize
   newGame();
