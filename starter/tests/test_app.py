@@ -16,6 +16,7 @@ def test_index_route_renders_main_page(client):
 
     assert response.status_code == 200
     assert b"Sudoku Game" in response.data
+    assert b'<meta name="viewport" content="width=device-width, initial-scale=1">' in response.data
     assert b'id="theme-toggle"' in response.data
     assert b'aria-pressed="false">Dark mode: Off</button>' in response.data
 
