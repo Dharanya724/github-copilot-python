@@ -10,6 +10,31 @@ CURRENT = {
     'hinted': set()
 }
 
+
+def _get_valid_board(data):
+    if not isinstance(data, dict):
+        return None
+
+    board = data.get('board')
+    if (
+        not isinstance(board, list)
+        or len(board) != sudoku_logic.SIZE
+        or any(
+            not isinstance(row, list) or len(row) != sudoku_logic.SIZE
+            for row in board
+        )
+        or any(
+            type(value) is not int
+            or value < sudoku_logic.EMPTY
+            or value > sudoku_logic.SIZE
+            for row in board
+            for value in row
+        )
+    ):
+        return None
+    return board
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -23,8 +48,14 @@ def new_game():
             return jsonify({'error': 'Invalid difficulty'}), 400
         clues = sudoku_logic.DIFFICULTY_CLUES[difficulty]
     else:
-        clues = int(request.args.get('clues', 35))
-    puzzle, solution = sudoku_logic.generate_puzzle(clues)
+        try:
+            clues = int(request.args.get('clues', 35))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Clues must be an integer'}), 400
+    try:
+        puzzle, solution = sudoku_logic.generate_puzzle(clues)
+    except ValueError:
+        return jsonify({'error': 'Unable to generate puzzle'}), 500
     CURRENT['puzzle'] = puzzle
     CURRENT['solution'] = solution
     CURRENT['hinted'] = set()
@@ -60,11 +91,13 @@ def validate_cell():
 
 @app.route('/check', methods=['POST'])
 def check_solution():
-    data = request.json
-    board = data.get('board')
     solution = CURRENT.get('solution')
     if solution is None:
         return jsonify({'error': 'No game in progress'}), 400
+    board = _get_valid_board(request.get_json(silent=True))
+    if board is None:
+        return jsonify({'error': 'Invalid board'}), 400
+
     incorrect = []
     for i in range(sudoku_logic.SIZE):
         for j in range(sudoku_logic.SIZE):
@@ -78,18 +111,8 @@ def get_hint():
     if solution is None:
         return jsonify({'error': 'No game in progress'}), 400
 
-    data = request.get_json(silent=True)
-    board = data.get('board') if isinstance(data, dict) else None
-    if (
-        not isinstance(board, list)
-        or len(board) != sudoku_logic.SIZE
-        or any(not isinstance(row, list) or len(row) != sudoku_logic.SIZE for row in board)
-        or any(
-            type(value) is not int or value < sudoku_logic.EMPTY or value > sudoku_logic.SIZE
-            for row in board
-            for value in row
-        )
-    ):
+    board = _get_valid_board(request.get_json(silent=True))
+    if board is None:
         return jsonify({'error': 'Invalid board'}), 400
 
     for row in range(sudoku_logic.SIZE):

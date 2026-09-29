@@ -63,6 +63,25 @@ def test_new_game_route_rejects_unknown_difficulty(client):
     assert response.get_json() == {"error": "Invalid difficulty"}
 
 
+def test_new_game_route_rejects_non_integer_clues(client):
+    response = client.get("/new?clues=abc")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Clues must be an integer"}
+
+
+def test_new_game_route_handles_puzzle_generation_failure(client, monkeypatch):
+    def fail_generation(clues):
+        raise ValueError("generation failed")
+
+    monkeypatch.setattr(sudoku_logic, "generate_puzzle", fail_generation)
+
+    response = client.get("/new?clues=35")
+
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Unable to generate puzzle"}
+
+
 def test_check_route_marks_correct_and_incorrect_boards(client):
     client.get("/new?clues=35")
     solution = CURRENT["solution"]
@@ -77,6 +96,72 @@ def test_check_route_marks_correct_and_incorrect_boards(client):
     assert wrong_response.status_code == 200
     wrong_data = wrong_response.get_json()
     assert [0, 0] in wrong_data["incorrect"]
+
+
+@pytest.mark.parametrize(
+    ("payload", "raw_data"),
+    [
+        pytest.param({}, None, id="missing-board"),
+        pytest.param([], None, id="non-object-array"),
+        pytest.param({"board": []}, None, id="empty-board"),
+        pytest.param("board", None, id="non-object-string"),
+        pytest.param(None, b'{"board":', id="malformed-json"),
+    ],
+)
+def test_check_route_rejects_invalid_json_payloads(client, payload, raw_data):
+    CURRENT["solution"] = sudoku_logic.create_empty_board()
+
+    if raw_data is None:
+        response = client.post("/check", json=payload)
+    else:
+        response = client.post(
+            "/check", data=raw_data, content_type="application/json"
+        )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid board"}
+
+
+@pytest.mark.parametrize(
+    "dimension",
+    [
+        pytest.param("row_count", id="wrong-row-count"),
+        pytest.param("column_count", id="wrong-column-count"),
+    ],
+)
+def test_check_route_rejects_invalid_board_dimensions(client, dimension):
+    CURRENT["solution"] = sudoku_logic.create_empty_board()
+    board = sudoku_logic.create_empty_board()
+    if dimension == "row_count":
+        board.pop()
+    else:
+        board[0].pop()
+
+    response = client.post("/check", json={"board": board})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid board"}
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(False, id="boolean"),
+        pytest.param(1.0, id="float"),
+        pytest.param("1", id="string"),
+        pytest.param(-1, id="below-minimum"),
+        pytest.param(sudoku_logic.SIZE + 1, id="above-maximum"),
+    ],
+)
+def test_check_route_rejects_invalid_cell_values(client, value):
+    CURRENT["solution"] = sudoku_logic.create_empty_board()
+    board = sudoku_logic.create_empty_board()
+    board[0][0] = value
+
+    response = client.post("/check", json={"board": board})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid board"}
 
 
 def test_validate_route_checks_one_editable_cell(client):
