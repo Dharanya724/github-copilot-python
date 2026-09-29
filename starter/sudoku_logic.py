@@ -57,6 +57,10 @@ def find_empty_cell(board):
 
 
 def count_solutions(board, limit=2):
+    """Count solutions up to `limit`, stopping once the threshold is met.
+
+    A limit of two is enough to detect puzzles with multiple solutions.
+    """
     working_board = deep_copy(board)
 
     if not is_board_valid(working_board):

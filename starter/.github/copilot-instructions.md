@@ -28,7 +28,7 @@ The application must support:
 - Use descriptive variable and function names.
 - Keep functions focused on a single responsibility.
 - Use modern Python features where they improve readability.
-- Add useful comments for non-obvious logic.
+- Add comments or docstrings only for non-obvious decisions; explain why the logic is needed rather than restating what the code does. Keep comment style consistent and avoid redundant or obvious comments.
 - Include appropriate error handling.
 - Do not introduce unnecessary dependencies.
 
